@@ -489,4 +489,9 @@ class Post
                 break;
         }
     }
+
+    public function __toString()
+    {
+        return $this->getHeadline();
+    }
 }
