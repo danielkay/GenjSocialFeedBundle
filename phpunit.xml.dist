@@ -8,11 +8,11 @@
          processIsolation="false"
          stopOnFailure="false"
          syntaxCheck="false"
-         bootstrap="Tests/Fixtures/app/bootstrap.php"
+         bootstrap="tests/Fixtures/app/bootstrap.php"
     >
     <testsuites>
         <testsuite name="GenjSocialFeedBundle Test Suite">
-            <directory>./Tests/</directory>
+            <directory>./tests/</directory>
         </testsuite>
     </testsuites>
 
@@ -20,15 +20,13 @@
         <whitelist>
             <directory suffix=".php">.</directory>
             <exclude>
-                <directory suffix=".php">./vendor</directory>
-                <directory suffix=".php">./build</directory>
-                <directory suffix=".php">./Tests</directory>
+                <directory suffix=".php">./tests</directory>
             </exclude>
         </whitelist>
     </filter>
 
     <php>
-        <server name="KERNEL_DIR" value="./Tests/Fixtures/app" />
+        <server name="KERNEL_DIR" value="./tests/Fixtures/app" />
     </php>
 
     <logging>
