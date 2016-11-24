@@ -2,10 +2,9 @@
 
 namespace Genj\SocialFeedBundle\Api;
 
+use Facebook\Exceptions\FacebookSDKException;
+use Facebook\Facebook;
 use Genj\SocialFeedBundle\Entity\Post;
-use Facebook\FacebookSession;
-use Facebook\Entities\AccessToken;
-use Facebook\FacebookRequest;
 
 /**
  * Class FacebookApi
@@ -15,16 +14,33 @@ use Facebook\FacebookRequest;
 class FacebookApi extends SocialApi
 {
     protected $providerName = 'facebook';
+    protected $fb;
+    protected $accessToken;
 
     /**
      * @param array $oAuthConfig
+     * @throws FacebookSDKException
+     * @throws \InvalidArgumentException
      */
     public function __construct($oAuthConfig)
     {
-        FacebookSession::setDefaultApplication($oAuthConfig['facebook']['app_id'], $oAuthConfig['facebook']['app_secret']);
+        $this->fb = new Facebook([
+            'app_id' => $oAuthConfig['facebook']['app_id'],
+            'app_secret' => $oAuthConfig['facebook']['app_secret'],
+            'default_graph_version' => 'v2.8',
+        ]);
 
-        $accessToken = AccessToken::requestAccessToken(array('grant_type' => 'client_credentials'));
-        $this->api = new FacebookSession($accessToken);
+        $helper = $this->fb->getRedirectLoginHelper();
+
+        try {
+            $accessToken = $helper->getAccessToken();
+        } catch(FacebookSDKException $e) {
+            // There was an error communicating with Graph
+            echo $e->getMessage();
+            exit;
+        }
+
+        $this->fb->setDefaultAccessToken((string) $accessToken);
     }
 
     /**
@@ -64,7 +80,7 @@ class FacebookApi extends SocialApi
         $post->setPostId($socialPost->id);
 
         $parameters = array('fields' => 'username');
-        $rawUserDetails = $this->requestGet("/". $socialPost->from->id, $parameters);
+        $rawUserDetails = $this->requestGet('/'. $socialPost->from->id, $parameters);
 
         $userDetails = $rawUserDetails->asArray();
 
@@ -86,7 +102,7 @@ class FacebookApi extends SocialApi
 
             // If there is an object_id, then the original file may be available, so check for that one
             if (isset($socialPost->object_id)) {
-                $rawImageDetails = $this->requestGet("/". $socialPost->object_id, array('fields' => 'images'));
+                $rawImageDetails = $this->requestGet('/'. $socialPost->object_id, array('fields' => 'images'));
                 $imageDetails = $rawImageDetails->asArray();
 
                 if (isset($imageDetails['images'][0]->source)) {
@@ -129,9 +145,22 @@ class FacebookApi extends SocialApi
     protected function requestGet($method, $parameters = array())
     {
         try {
-            $response = (new FacebookRequest($this->api, 'GET', $method, $parameters, 'v2.4'))->execute();
+            $parameterCount = count($parameters);
+            if (0 !== $parameterCount) {
+                $i = 0;
+                foreach ($parameters as $key => $value) {
+                    if ($i = 0) {
+                        $method .= '?';
+                    } elseif ($i !== $parameterCount-1) {
+                        $method .= '&';
+                    }
+                    $method .= "$key=".implode(',', $value);
+                    $i++;
+                }
+            }
+            $response = $this->fb->get($method);
 
-            return $response->getGraphObject();
+            return $response->getGraphNode();
         } catch (\Exception $ex) {
             throw $ex;
         }
